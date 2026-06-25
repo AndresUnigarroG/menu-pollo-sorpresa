@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico Estratégico del Menú — Pollo Sorpresa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.15);
+    --text: #1a1a18;
+    --text-2: #555550;
+    --text-3: #888880;
+    --naranja: #E05B1A;
+    --naranja-l: #FDF0E8;
+    --azul: #174A7C;
+    --verde: #1D6B50;
+    --rojo: #A32D2D;
+    --ambar: #BA7517;
+    --morado: #4A3080;
+    --gris: #555555;
+    --radius: 8px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: var(--text); color: white; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 32px; height: 32px; background: var(--naranja); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; flex-shrink: 0; }
+  .header-name { font-size: 15px; font-weight: 500; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.5); }
+  .header-meta { font-size: 12px; color: rgba(255,255,255,0.45); text-align: right; }
+
+  /* LAYOUT */
+  .layout { display: grid; grid-template-columns: 200px 1fr; min-height: calc(100vh - 56px); }
+
+  /* SIDEBAR NAV */
+  .sidebar { background: var(--surface); border-right: 0.5px solid var(--border); padding: 1.5rem 0; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
+  .nav-section { padding: 0 1rem 0.5rem; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; margin-top: 1.25rem; }
+  .nav-section:first-child { margin-top: 0; }
+  .nav-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 1rem; font-size: 13px; color: var(--text-2); background: transparent; border: none; cursor: pointer; text-align: left; transition: all .12s; border-left: 2px solid transparent; }
+  .nav-btn:hover { background: var(--bg); color: var(--text); }
+  .nav-btn.active { background: var(--naranja-l); color: var(--naranja); border-left-color: var(--naranja); font-weight: 500; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.5; flex-shrink: 0; }
+  .nav-btn.active .nav-dot { opacity: 1; }
+
+  /* MAIN */
+  .main { padding: 2rem; overflow-x: hidden; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* PAGE HEADER */
+  .page-hdr { margin-bottom: 1.5rem; }
+  .page-hdr h1 { font-size: 22px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .page-hdr p { font-size: 13px; color: var(--text-3); }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .kpi-val { font-size: 24px; font-weight: 500; color: var(--naranja); line-height: 1.1; margin-bottom: 4px; }
+  .kpi-lbl { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .kpi-sub { font-size: 11px; color: var(--text-3); }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .card-sub { font-size: 12px; color: var(--text-3); margin-bottom: 1.25rem; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .ch { position: relative; width: 100%; }
+
+  /* INSIGHTS */
+  .insight { border-radius: var(--radius); padding: 12px 16px; margin-bottom: 1.25rem; font-size: 13px; line-height: 1.65; color: var(--text-2); border-left: 3px solid; }
+  .ins-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 5px; }
+  .ins-e { background: #d4ede520; border-color: var(--verde); }
+  .ins-e .ins-title { color: var(--verde); }
+  .ins-v { background: #f8e0e020; border-color: var(--rojo); }
+  .ins-v .ins-title { color: var(--rojo); }
+  .ins-a { background: #fdf0d520; border-color: var(--ambar); }
+  .ins-a .ins-title { color: var(--ambar); }
+  .ins-b { background: #d6e6f520; border-color: var(--azul); }
+  .ins-b .ins-title { color: var(--azul); }
+
+  /* FILTERS */
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+  .filter-row label { font-size: 12px; color: var(--text-3); margin-right: 4px; }
+  .fbtn { background: transparent; border: 0.5px solid var(--border-strong); border-radius: var(--radius); padding: 5px 12px; font-size: 12px; color: var(--text-2); cursor: pointer; transition: all .12s; }
+  .fbtn:hover { background: var(--bg); }
+  .fbtn.on { background: var(--text); color: white; border-color: var(--text); font-weight: 500; }
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 1rem; font-size: 12px; color: var(--text-2); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .ldot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* TABLE */
+  .tbl-wrap { border-radius: 12px; overflow: hidden; border: 0.5px solid var(--border); margin-bottom: 1.25rem; }
+  table.et { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.et th { background: var(--bg); color: var(--text-2); font-weight: 500; text-align: left; padding: 8px 10px; border-bottom: 0.5px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  table.et td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); color: var(--text-2); vertical-align: middle; }
+  table.et tr:last-child td { border-bottom: none; }
+  table.et tr:hover td { background: var(--bg); }
+  .tier-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius); letter-spacing: .04em; }
+  .tier-I { background: #f8e0e0; color: #A32D2D; }
+  .tier-R { background: #fdf0d5; color: #7A4F0D; }
+  .tier-E { background: #f4f4f4; color: #444444; }
+
+  /* BEHAVIORAL CARDS */
+  .beh-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .beh-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; border-left: 3px solid; }
+  .beh-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .beh-body { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+  .prio-A { border-left-color: var(--rojo); }
+  .prio-M { border-left-color: var(--ambar); }
+  .prio-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .pb-A { background: #f8e0e0; color: #A32D2D; }
+  .pb-M { background: #fdf0d5; color: #7A4F0D; }
+
+  /* TOOLTIP */
+  #tooltip { position: fixed; background: white; border: 0.5px solid var(--border-strong); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; pointer-events: none; z-index: 9999; max-width: 240px; line-height: 1.55; box-shadow: 0 4px 16px rgba(0,0,0,.1); display: none; }
+  #tooltip strong { color: var(--text); display: block; margin-bottom: 3px; font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .beh-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">PS</div>
+    <div>
+      <div class="header-name">Pollo Sorpresa — Diagnóstico Estratégico del Menú</div>
+      <div class="header-sub">Dic 2025 – May 2026 · Kasavana & Smith + Behavioral Pricing</div>
+    </div>
+  </div>
+  <div class="header-meta">Uso interno · Confidencial<br>Junio 2026</div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-section">Visión general</div>
+    <button class="nav-btn active" onclick="show('resumen')"><span class="nav-dot"></span>Resumen ejecutivo</button>
+    <button class="nav-btn" onclick="show('tendencia')"><span class="nav-dot"></span>Tendencia mensual</button>
+
+    <div class="nav-section">Análisis por canal</div>
+    <button class="nav-btn" onclick="show('puntos')"><span class="nav-dot"></span>Por punto de venta</button>
+
+    <div class="nav-section">Metodología</div>
+    <button class="nav-btn" onclick="show('kasavana')"><span class="nav-dot"></span>Kasavana & Smith</button>
+    <button class="nav-btn" onclick="show('categorias')"><span class="nav-dot"></span>Análisis por categoría</button>
+    <button class="nav-btn" onclick="show('bebidas')"><span class="nav-dot"></span>Bebidas</button>
+    <button class="nav-btn" onclick="show('combo')"><span class="nav-dot"></span>Efecto combo</button>
+
+    <div class="nav-section">Decisiones</div>
+    <button class="nav-btn" onclick="show('eliminar')"><span class="nav-dot"></span>Candidatos a eliminar</button>
+    <button class="nav-btn" onclick="show('behavioral')"><span class="nav-dot"></span>Behavioral pricing</button>
+  </nav>
+
+  <main class="main">
+    <div id="tooltip"></div>
+
+    <!-- RESUMEN -->
+    <div id="sec-resumen" class="section active">
+      <div class="page-hdr"><h1>Resumen ejecutivo</h1><p>Indicadores clave del período · Diagnóstico por cuadrante · Productos líderes</p></div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-val">$6.199M</div><div class="kpi-lbl">Ingreso total</div><div class="kpi-sub">Dic 2025 – May 2026</div></div>
+        <div class="kpi"><div class="kpi-val">$2.460M</div><div class="kpi-lbl">Margen bruto total</div><div class="kpi-sub">Promedio ponderado: 39,7%</div></div>
+        <div class="kpi"><div class="kpi-val">344.570</div><div class="kpi-lbl">Unidades vendidas</div><div class="kpi-sub">6 meses ponderados</div></div>
+        <div class="kpi"><div class="kpi-val">86</div><div class="kpi-lbl">Productos activos</div><div class="kpi-sub">5 categorías en la carta</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Distribución Kasavana & Smith</div>
+          <div class="card-sub">Productos y % del margen bruto por cuadrante</div>
+          <div class="legend">
+            <span><span class="ldot" style="background:#1D6B50"></span>Estrella</span>
+            <span><span class="ldot" style="background:#A32D2D"></span>Vaca</span>
+            <span><span class="ldot" style="background:#BA7517"></span>Puzzle</span>
+            <span><span class="ldot" style="background:#888"></span>Perro</span>
+          </div>
+          <div class="ch" style="height:200px"><canvas id="c-kas-sum"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top 5 por contribución al margen bruto</div>
+          <div class="card-sub">Concentración: 62,1% del ingreso total en 5 productos</div>
+          <div class="ch" style="height:200px"><canvas id="c-top5"></canvas></div>
+        </div>
+      </div>
+      <div class="insight ins-v">
+        <div class="ins-title">Hallazgo central</div>
+        Las Vacas generan el 71% del margen con un margen promedio del 40,8%. Las Estrellas generan el 21% con un margen promedio del 49%. Hay una brecha de 8 puntos entre lo que más vende y lo que mejor renta. Si el margen promedio ponderado subiera del 39,7% al 44%, el margen bruto del período pasaría de $2.460M a $2.725M — sin un solo cliente nuevo.
+      </div>
+    </div>
+
+    <!-- TENDENCIA -->
+    <div id="sec-tendencia" class="section">
+      <div class="page-hdr"><h1>Tendencia mensual</h1><p>Unidades vendidas por mes · Todos los puntos de venta consolidados</p></div>
+      <div class="card">
+        <div class="card-title">Evolución mensual de unidades vendidas</div>
+        <div class="card-sub">Diciembre 2025 a mayo 2026 · Pasa el cursor sobre las barras para ver el detalle</div>
+        <div class="ch" style="height:280px"><canvas id="c-tend"></canvas></div>
+      </div>
+      <div class="insight ins-a">
+        <div class="ins-title">Lectura clave</div>
+        Diciembre es un 68% más alto que febrero, el mes base real del negocio (46.565 unidades). La base estable es entre 52.000 y 56.000 unidades mensuales en meses neutros. El nuevo menú debe diseñarse para ese cliente habitual, no para el pico de temporada navideña.
+      </div>
+    </div>
+
+    <!-- PUNTOS -->
+    <div id="sec-puntos" class="section">
+      <div class="page-hdr"><h1>Análisis por punto de venta</h1><p>Participación en volumen y comportamiento mensual de cada canal</p></div>
+      <div class="card">
+        <div class="card-title">Participación en volumen por punto de venta</div>
+        <div class="card-sub">Unidades totales en el período</div>
+        <div class="ch" style="height:220px"><canvas id="c-part"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tendencia mensual por punto de venta</div>
+        <div class="card-sub">Comportamiento mes a mes de cada canal</div>
+        <div class="ch" style="height:260px"><canvas id="c-tend-pts"></canvas></div>
+      </div>
+      <div class="insight ins-b">
+        <div class="ins-title">Perfiles diferenciados por canal</div>
+        Principal + Centro = 51,8% del negocio. Unicentro concentra el 52–69% de las ventas de Combos Cajita — perfil de cliente más joven y orientado a snacks. Domicilios opera casi sin bebidas: menos del 5% del volumen de cualquier bebida llega por ese canal, pese a ser el canal de las hamburguesas (46,5% de sus ventas son delivery).
+      </div>
+    </div>
+
+    <!-- KASAVANA -->
+    <div id="sec-kasavana" class="section">
+      <div class="page-hdr"><h1>Matriz Kasavana & Smith</h1><p>Todos los productos clasificados por popularidad y rentabilidad</p></div>
+      <div class="filter-row">
+        <label>Filtrar por categoría:</label>
+        <button class="fbtn on" onclick="filterKas('TODAS',this)">Todas</button>
+        <button class="fbtn" onclick="filterKas('PLATOS PRINCIPALES',this)">Platos</button>
+        <button class="fbtn" onclick="filterKas('COMPLEMENTO/ACOMPAÑAMIENTO',this)">Complementos</button>
+        <button class="fbtn" onclick="filterKas('BEBIDAS',this)">Bebidas</button>
+        <button class="fbtn" onclick="filterKas('COMBOS',this)">Combos</button>
+        <button class="fbtn" onclick="filterKas('ADICIONES/EXTRAS',this)">Adiciones</button>
+      </div>
+      <div class="legend">
+        <span><span class="ldot" style="background:rgba(29,107,80,.35);border:1.5px solid #1D6B50"></span>Estrella — alta rotación, alto margen</span>
+        <span><span class="ldot" style="background:rgba(162,45,45,.35);border:1.5px solid #A32D2D"></span>Vaca — alta rotación, bajo margen</span>
+        <span><span class="ldot" style="background:rgba(186,117,23,.35);border:1.5px solid #BA7517"></span>Puzzle — baja rotación, alto margen</span>
+        <span><span class="ldot" style="background:rgba(85,85,85,.35);border:1.5px solid #555"></span>Perro — baja rotación, bajo margen</span>
+      </div>
+      <div class="card">
+        <div class="card-title">Matriz completa — menú actual</div>
+        <div class="card-sub">Eje X = rotación ponderada mensual · Eje Y = margen bruto % · Tamaño = contribución al margen · Pasa el cursor para ver el producto</div>
+        <div class="ch" style="height:440px"><canvas id="c-kas"></canvas></div>
+      </div>
+      <div class="insight ins-e">
+        <div class="ins-title">Cómo leer la matriz</div>
+        Los cuadrantes están definidos por la mediana de la categoría propia de cada producto. Superior derecho = Estrella. Inferior derecho = Vaca. Superior izquierdo = Puzzle. Inferior izquierdo = Perro. El tamaño del círculo indica la contribución absoluta al margen bruto del período.
+      </div>
+    </div>
+
+    <!-- CATEGORÍAS -->
+    <div id="sec-categorias" class="section">
+      <div class="page-hdr"><h1>Análisis por categoría</h1><p>Participación en ingreso vs. margen · Eficiencia de cada categoría · Top 12 productos</p></div>
+      <div class="card">
+        <div class="card-title">Participación por categoría — ingreso vs. margen bruto</div>
+        <div class="card-sub">Las bebidas generan el 13,1% del margen con solo el 8,9% del ingreso</div>
+        <div class="ch" style="height:240px"><canvas id="c-cats"></canvas></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Top 12 por contribución al margen bruto</div>
+          <div class="card-sub">Verde = Estrella · Rojo = Vaca</div>
+          <div class="ch" style="height:340px"><canvas id="c-top12"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Eficiencia de margen por categoría</div>
+          <div class="card-sub">Margen bruto % sobre el ingreso de la categoría</div>
+          <div class="ch" style="height:340px"><canvas id="c-eff"></canvas></div>
+        </div>
+      </div>
+      <div class="insight ins-b">
+        <div class="ins-title">El principio ancla</div>
+        El plato principal no es solo un generador de margen — es el detonador de una cadena de compra. El cliente que pide un cuarto de pollo asado y sale con solo eso deja $5.966 de margen bruto. El mismo cliente con consomé y limonada deja $14.734 — un 147% más. Eso no requiere un producto nuevo. Solo requiere un menú que lo pida.
+      </div>
+    </div>
+
+    <!-- BEBIDAS -->
+    <div id="sec-bebidas" class="section">
+      <div class="page-hdr"><h1>Análisis de bebidas</h1><p>La categoría más rentable por eficiencia · El canal domicilios sin bebidas</p></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Bebidas — Matriz Kasavana & Smith</div>
+          <div class="card-sub">Rotación vs. margen · Tamaño = contribución al margen</div>
+          <div class="ch" style="height:300px"><canvas id="c-beb-kas"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Bebidas en domicilios — el margen que no llega</div>
+          <div class="card-sub">% de unidades de cada bebida vendidas por domicilio</div>
+          <div class="ch" style="height:300px"><canvas id="c-dom-beb"></canvas></div>
+        </div>
+      </div>
+      <div class="insight ins-v">
+        <div class="ins-title">Hallazgo crítico</div>
+        La Limonada (16.424 unidades, 56% margen) es la sexta mayor fuente de margen de todo el portafolio. La Gaseosa 350ml es Estrella con 67% de margen. Las bebidas generan el 13,1% del margen con solo el 8,9% del ingreso. Sin embargo, en domicilios menos del 5% de cualquier bebida llega al cliente, pese a ser el canal de las hamburguesas (46,5% de sus ventas).
+      </div>
+    </div>
+
+    <!-- COMBO -->
+    <div id="sec-combo" class="section">
+      <div class="page-hdr"><h1>El efecto combo</h1><p>El mismo producto, distinto cuadrante Kasavana</p></div>
+      <div class="card">
+        <div class="card-title">Rotación mensual ponderada — producto solo vs. combo con bebida</div>
+        <div class="card-sub">Pasa el cursor sobre las barras para ver el multiplicador</div>
+        <div class="ch" style="height:300px"><canvas id="c-combo"></canvas></div>
+      </div>
+      <div class="two-col">
+        <div class="insight ins-e" style="margin-bottom:0">
+          <div class="ins-title">Clasificación Kasavana</div>
+          Los productos solos son Puzzles (baja rotación, alto margen). Los mismos productos en combo se convierten en Estrellas. La reclasificación ocurre sin cambiar el producto ni el precio base.
+        </div>
+        <div class="insight ins-a" style="margin-bottom:0">
+          <div class="ins-title">La regla de oro</div>
+          Ningún producto que tenga versión combo debe aparecer prominentemente en su versión sola. El orden en la carta no es neutro — es una decisión de ventas con impacto directo en rentabilidad.
+        </div>
+      </div>
+    </div>
+
+    <!-- ELIMINAR -->
+    <div id="sec-eliminar" class="section">
+      <div class="page-hdr"><h1>Candidatos a eliminar</h1><p>18 productos clasificados por urgencia de eliminación o reformulación</p></div>
+      <div class="filter-row">
+        <label>Filtrar por nivel:</label>
+        <button class="fbtn on" onclick="filterElim('TODAS',this)">Todos</button>
+        <button class="fbtn" onclick="filterElim('INMEDIATA',this)">Eliminación inmediata</button>
+        <button class="fbtn" onclick="filterElim('RECOMENDADA',this)">Eliminación recomendada</button>
+        <button class="fbtn" onclick="filterElim('EVALUAR',this)">Evaluación prioritaria</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="et"><thead><tr><th style="width:32%">Producto</th><th>Categoría</th><th>Precio</th><th>Margen</th><th>Rotación</th><th>Nivel</th></tr></thead>
+        <tbody id="elim-tbody"></tbody></table>
+      </div>
+      <div class="insight ins-v">
+        <div class="ins-title">Impacto de la eliminación</div>
+        Los 18 candidatos generan en conjunto el 3,8% del margen total. Su salida de la carta no genera pérdida financiera significativa. En cambio, su permanencia genera un costo invisible: diluyen la atención del cliente y oscurecen los productos más rentables. Una carta de 86 productos compite consigo misma. Una carta de 30 trabaja para el negocio.
+      </div>
+    </div>
+
+    <!-- BEHAVIORAL -->
+    <div id="sec-behavioral" class="section">
+      <div class="page-hdr"><h1>Behavioral pricing</h1><p>Los sesgos cognitivos que el menú actual no está aprovechando</p></div>
+      <div class="filter-row">
+        <label>Filtrar por prioridad:</label>
+        <button class="fbtn on" onclick="filterBeh('TODAS',this)">Todos</button>
+        <button class="fbtn" onclick="filterBeh('Alta',this)">Alta prioridad</button>
+        <button class="fbtn" onclick="filterBeh('Media',this)">Media prioridad</button>
+      </div>
+      <div class="beh-grid" id="beh-grid"></div>
+      <div class="insight ins-b">
+        <div class="ins-title">El principio unificador</div>
+        Los clientes no comparan precios como hojas de cálculo. Comparan en relación con lo que ven, en el orden en que lo ven, y contra las referencias disponibles. El menú actual no controla ninguna de esas tres variables de forma intencional. El nuevo menú debe controlarlas: qué se muestra, en qué orden, y contra qué referencia de precio.
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const KC={ESTRELLA:'#1D6B50',VACA:'#A32D2D',PUZZLE:'#BA7517',PERRO:'#555555'};
+const KF={ESTRELLA:'rgba(29,107,80,0.22)',VACA:'rgba(162,45,45,0.22)',PUZZLE:'rgba(186,117,23,0.22)',PERRO:'rgba(85,85,85,0.16)'};
+const PT_C={'PRINCIPAL':'#E05B1A','CENTRO':'#174A7C','UNICENTRO':'#1D6B50','AVENIDA':'#BA7517','DOMICILIOS':'#7B5EA7'};
+const GL='rgba(0,0,0,0.06)', TC='#888';
+
+const SCATTER_DATA=[{"n":"POLLO ASADO ENTERO","cat":"PLATOS PRINCIPALES","mg":37.5,"rot":2750.8,"ctr":401.41,"px":63900,"kas":"VACA"},{"n":"POLLO ASADO CUARTO","cat":"PLATOS PRINCIPALES","mg":35.3,"rot":17736.6,"ctr":641.64,"px":16900,"kas":"VACA"},{"n":"BANDEJA POLLO ASADO","cat":"PLATOS PRINCIPALES","mg":36.9,"rot":2210.4,"ctr":128.04,"px":25800,"kas":"VACA"},{"n":"POLLO BROASTER ENTERO","cat":"PLATOS PRINCIPALES","mg":39.0,"rot":426.0,"ctr":65.14,"px":63900,"kas":"ESTRELLA"},{"n":"POLLO BROASTER CUARTO","cat":"PLATOS PRINCIPALES","mg":36.2,"rot":4329.6,"ctr":162.15,"px":16900,"kas":"VACA"},{"n":"BANDEJA POLLO BROASTER","cat":"PLATOS PRINCIPALES","mg":37.7,"rot":497.7,"ctr":29.61,"px":25800,"kas":"VACA"},{"n":"POLLO BBQ ENTERO","cat":"PLATOS PRINCIPALES","mg":34.0,"rot":61.3,"ctr":9.17,"px":70600,"kas":"PERRO"},{"n":"POLLO BBQ CUARTO","cat":"PLATOS PRINCIPALES","mg":39.0,"rot":453.7,"ctr":23.11,"px":21400,"kas":"ESTRELLA"},{"n":"BANDEJA POLLO BBQ","cat":"PLATOS PRINCIPALES","mg":36.0,"rot":136.2,"ctr":8.83,"px":29400,"kas":"PERRO"},{"n":"POLLO MEXICANO ENTERO","cat":"PLATOS PRINCIPALES","mg":33.0,"rot":31.9,"ctr":4.77,"px":74900,"kas":"PERRO"},{"n":"POLLO MEXICANO CUARTO","cat":"PLATOS PRINCIPALES","mg":38.0,"rot":334.0,"ctr":17.27,"px":22400,"kas":"VACA"},{"n":"BANDEJA POLLO MEXICANO","cat":"PLATOS PRINCIPALES","mg":35.0,"rot":119.8,"ctr":7.85,"px":30900,"kas":"PERRO"},{"n":"POLLO GRILLE","cat":"PLATOS PRINCIPALES","mg":41.7,"rot":199.3,"ctr":15.72,"px":31400,"kas":"ESTRELLA"},{"n":"MILANESA DE POLLO","cat":"PLATOS PRINCIPALES","mg":43.6,"rot":272.8,"ctr":24.19,"px":33900,"kas":"ESTRELLA"},{"n":"ARROZ CON POLLO","cat":"PLATOS PRINCIPALES","mg":39.1,"rot":266.3,"ctr":19.62,"px":30900,"kas":"ESTRELLA"},{"n":"ALMUERZO POLLO ASADO","cat":"PLATOS PRINCIPALES","mg":33.5,"rot":551.3,"ctr":31.04,"px":27800,"kas":"VACA"},{"n":"ALMUERZO POLLO BROASTER","cat":"PLATOS PRINCIPALES","mg":34.5,"rot":111.0,"ctr":6.55,"px":27800,"kas":"PERRO"},{"n":"SANCOCHO CON PRESA","cat":"PLATOS PRINCIPALES","mg":42.0,"rot":37.9,"ctr":3.5,"px":36400,"kas":"PUZZLE"},{"n":"AJIACO","cat":"PLATOS PRINCIPALES","mg":52.0,"rot":45.0,"ctr":4.72,"px":33400,"kas":"PUZZLE"},{"n":"AJIAQUITO","cat":"PLATOS PRINCIPALES","mg":50.0,"rot":63.2,"ctr":4.76,"px":24900,"kas":"PUZZLE"},{"n":"SANCOCHITO","cat":"PLATOS PRINCIPALES","mg":43.0,"rot":50.1,"ctr":3.72,"px":28400,"kas":"PUZZLE"},{"n":"ENSALADA CESAR DE POLLO","cat":"PLATOS PRINCIPALES","mg":32.0,"rot":74.2,"ctr":3.68,"px":25500,"kas":"PERRO"},{"n":"HAMBURGUESA APANADO","cat":"PLATOS PRINCIPALES","mg":54.0,"rot":49.8,"ctr":5.13,"px":31800,"kas":"PUZZLE"},{"n":"HAMBUR CRISPI SORPRESA","cat":"PLATOS PRINCIPALES","mg":49.0,"rot":52.7,"ctr":5.28,"px":33800,"kas":"PUZZLE"},{"n":"SANDWICH DE POLLO","cat":"PLATOS PRINCIPALES","mg":43.0,"rot":110.1,"ctr":7.46,"px":25800,"kas":"PUZZLE"},{"n":"CRISPETAS DE POLLO","cat":"PLATOS PRINCIPALES","mg":48.0,"rot":869.0,"ctr":58.44,"px":22900,"kas":"ESTRELLA"},{"n":"ALITAS BBQ","cat":"PLATOS PRINCIPALES","mg":37.0,"rot":452.3,"ctr":36.37,"px":35900,"kas":"VACA"},{"n":"ALITAS MIEL MOSTAZA","cat":"PLATOS PRINCIPALES","mg":35.0,"rot":160.0,"ctr":12.4,"px":36900,"kas":"PERRO"},{"n":"ALITAS PICANTES","cat":"PLATOS PRINCIPALES","mg":35.0,"rot":82.4,"ctr":6.55,"px":37300,"kas":"PERRO"},{"n":"BURRITO MEXICANO","cat":"PLATOS PRINCIPALES","mg":46.0,"rot":107.5,"ctr":6.57,"px":21900,"kas":"PUZZLE"},{"n":"NACHOS MEXICANOS","cat":"PLATOS PRINCIPALES","mg":38.0,"rot":118.6,"ctr":8.11,"px":29800,"kas":"PERRO"},{"n":"COMBO SANDWICH+BEB","cat":"PLATOS PRINCIPALES","mg":40.5,"rot":252.1,"ctr":17.56,"px":27800,"kas":"ESTRELLA"},{"n":"COMBO BURRITO+BEB","cat":"PLATOS PRINCIPALES","mg":41.9,"rot":190.8,"ctr":11.68,"px":23900,"kas":"ESTRELLA"},{"n":"COMBO HMB APANADO+BEB","cat":"PLATOS PRINCIPALES","mg":51.8,"rot":164.5,"ctr":17.61,"px":33800,"kas":"ESTRELLA"},{"n":"COMBO HMB CRISPI+BEB","cat":"PLATOS PRINCIPALES","mg":48.0,"rot":197.7,"ctr":20.72,"px":35800,"kas":"ESTRELLA"},{"n":"CONSOME MENUDENCIA","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":40.0,"rot":2022.1,"ctr":61.08,"px":12400,"kas":"VACA"},{"n":"CONSOME CON PAPA","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":41.0,"rot":1047.4,"ctr":17.82,"px":6800,"kas":"VACA"},{"n":"CONSOME C/POLLO DESMECHADO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":46.0,"rot":1430.6,"ctr":73.67,"px":18400,"kas":"ESTRELLA"},{"n":"CONSOME CELESTINO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":48.0,"rot":225.1,"ctr":5.11,"px":7800,"kas":"ESTRELLA"},{"n":"CONSOME CON PATACON","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":47.0,"rot":185.6,"ctr":4.12,"px":7800,"kas":"PUZZLE"},{"n":"SOPA DE SANCOCHO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":42.0,"rot":10.7,"ctr":0.27,"px":9900,"kas":"PERRO"},{"n":"SOPA DE AJIACO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":43.0,"rot":7.7,"ctr":0.2,"px":9900,"kas":"PERRO"},{"n":"CREMA DE POLLO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":47.0,"rot":163.4,"ctr":7.19,"px":15400,"kas":"PUZZLE"},{"n":"ADICIONAL PORCION ARROZ","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":55.0,"rot":640.3,"ctr":11.59,"px":5400,"kas":"ESTRELLA"},{"n":"PAPA A LA FRANCESA","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":34.0,"rot":579.6,"ctr":13.08,"px":10900,"kas":"VACA"},{"n":"ADICIONAL PAPA VAPOR","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":44.0,"rot":298.8,"ctr":6.26,"px":7800,"kas":"ESTRELLA"},{"n":"CASCOS PAPA CON AJI","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":42.0,"rot":7.5,"ctr":0.19,"px":9800,"kas":"PERRO"},{"n":"CASCOS PAPA GUACAMOLE","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":44.0,"rot":126.5,"ctr":3.59,"px":10800,"kas":"PUZZLE"},{"n":"PORCION DE AREPA","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":62.0,"rot":67.2,"ctr":1.0,"px":3900,"kas":"PUZZLE"},{"n":"AREPAS FRITAS","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":60.0,"rot":38.4,"ctr":0.68,"px":4900,"kas":"PUZZLE"},{"n":"ADICIONAL YUCAS","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":36.0,"rot":224.6,"ctr":5.34,"px":10800,"kas":"VACA"},{"n":"PLATANO QUESO BOCADILLO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":41.0,"rot":337.9,"ctr":9.03,"px":10800,"kas":"VACA"},{"n":"PORCION ENSALADA","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":52.0,"rot":163.5,"ctr":3.32,"px":6400,"kas":"PUZZLE"},{"n":"ADIC NACHOS CON POLLO","cat":"COMPLEMENTO/ACOMPAÑAMIENTO","mg":39.0,"rot":405.2,"ctr":13.32,"px":13900,"kas":"VACA"},{"n":"CAJITA MINIHAMBURGUESA","cat":"COMBOS","mg":37.0,"rot":149.1,"ctr":9.72,"px":28500,"kas":"ESTRELLA"},{"n":"CAJITA CRISPETA","cat":"COMBOS","mg":41.5,"rot":243.7,"ctr":17.79,"px":28500,"kas":"ESTRELLA"},{"n":"CAJITA COLOMBINA","cat":"COMBOS","mg":32.5,"rot":104.2,"ctr":5.9,"px":28500,"kas":"VACA"},{"n":"GRILLE GRATINADO PARA DOS","cat":"COMBOS","mg":35.0,"rot":39.5,"ctr":3.42,"px":39900,"kas":"PERRO"},{"n":"ARROZ CON POLLO PARA DOS","cat":"COMBOS","mg":37.0,"rot":56.0,"ctr":6.15,"px":48900,"kas":"PUZZLE"},{"n":"FRIOPACK 400ML","cat":"BEBIDAS","mg":60.0,"rot":1165.2,"ctr":30.34,"px":7200,"kas":"ESTRELLA"},{"n":"LITRAZO 1.5L","cat":"BEBIDAS","mg":49.0,"rot":694.1,"ctr":15.64,"px":7400,"kas":"VACA"},{"n":"JUGO DEL VALLE 500ML","cat":"BEBIDAS","mg":59.0,"rot":160.5,"ctr":3.44,"px":5900,"kas":"PERRO"},{"n":"FUZE TEA 400ML","cat":"BEBIDAS","mg":60.0,"rot":232.0,"ctr":5.82,"px":6900,"kas":"PUZZLE"},{"n":"SODA 400ML","cat":"BEBIDAS","mg":65.0,"rot":202.8,"ctr":5.12,"px":6400,"kas":"PUZZLE"},{"n":"GASEOSA 250ML","cat":"BEBIDAS","mg":72.0,"rot":227.6,"ctr":5.48,"px":5400,"kas":"PUZZLE"},{"n":"GASEOSA 350ML","cat":"BEBIDAS","mg":67.0,"rot":1625.4,"ctr":48.61,"px":7200,"kas":"ESTRELLA"},{"n":"MEGALITRO 2.5L","cat":"BEBIDAS","mg":52.0,"rot":69.0,"ctr":3.51,"px":15900,"kas":"PERRO"},{"n":"CERVEZA","cat":"BEBIDAS","mg":55.5,"rot":90.0,"ctr":2.57,"px":8400,"kas":"PERRO"},{"n":"AGUAS","cat":"BEBIDAS","mg":61.0,"rot":596.3,"ctr":14.57,"px":6600,"kas":"ESTRELLA"},{"n":"LIMONADA","cat":"BEBIDAS","mg":56.0,"rot":2676.8,"ctr":71.74,"px":7800,"kas":"VACA"},{"n":"JUGO DE MANGO","cat":"BEBIDAS","mg":61.0,"rot":669.2,"ctr":19.65,"px":7800,"kas":"ESTRELLA"},{"n":"JUGO DE MORA","cat":"BEBIDAS","mg":64.0,"rot":585.2,"ctr":18.09,"px":7800,"kas":"PUZZLE"},{"n":"JUGO NATURAL EN AGUA","cat":"BEBIDAS","mg":60.0,"rot":1351.9,"ctr":38.87,"px":7800,"kas":"VACA"},{"n":"JUGO NATURAL EN LECHE","cat":"BEBIDAS","mg":48.5,"rot":922.6,"ctr":25.85,"px":9400,"kas":"VACA"},{"n":"GRANIZADO","cat":"BEBIDAS","mg":56.6,"rot":290.7,"ctr":11.93,"px":11800,"kas":"PERRO"},{"n":"ADICIONAL AJI","cat":"ADICIONES/EXTRAS","mg":68.0,"rot":53.0,"ctr":0.55,"px":2500,"kas":"PUZZLE"},{"n":"ADICIONAL SALSA BBQ","cat":"ADICIONES/EXTRAS","mg":59.0,"rot":198.7,"ctr":2.43,"px":3400,"kas":"ESTRELLA"},{"n":"ADICIONAL MIEL MOSTAZA","cat":"ADICIONES/EXTRAS","mg":48.0,"rot":153.5,"ctr":1.53,"px":3400,"kas":"ESTRELLA"},{"n":"ADICIONAL SALSA QUESO","cat":"ADICIONES/EXTRAS","mg":45.0,"rot":58.8,"ctr":0.6,"px":3800,"kas":"PERRO"},{"n":"GUACAMOLE PICANTE","cat":"ADICIONES/EXTRAS","mg":45.0,"rot":1033.0,"ctr":10.69,"px":3800,"kas":"VACA"},{"n":"SALSA ROSADA ESPECIAL","cat":"ADICIONES/EXTRAS","mg":51.0,"rot":77.8,"ctr":0.84,"px":3400,"kas":"ESTRELLA"},{"n":"SALSA AJO","cat":"ADICIONES/EXTRAS","mg":42.0,"rot":1129.7,"ctr":10.94,"px":3800,"kas":"VACA"},{"n":"SOBRE SALSA TOMATE","cat":"ADICIONES/EXTRAS","mg":57.0,"rot":5.0,"ctr":0.01,"px":800,"kas":"PUZZLE"},{"n":"SOBRE MIEL","cat":"ADICIONES/EXTRAS","mg":45.0,"rot":15.4,"ctr":0.03,"px":800,"kas":"PERRO"},{"n":"ADICIONAL SALSA CESAR","cat":"ADICIONES/EXTRAS","mg":45.0,"rot":1.1,"ctr":0.01,"px":3400,"kas":"PERRO"},{"n":"AGRANDADO PAPA FRANCESA","cat":"ADICIONES/EXTRAS","mg":65.0,"rot":122.5,"ctr":0.48,"px":1000,"kas":"ESTRELLA"}];
+const TEND_TOTAL=[77983,57507,46565,55183,52594,54738];
+const TEND_PTS={"AVENIDA":[9041,8878,7515,9060,8006,8789],"CENTRO":[23235,13331,11515,13753,13852,14051],"DOMICILIOS":[9760,10008,7321,8103,7131,7460],"PRINCIPAL":[23396,14629,12068,14144,13994,13559],"UNICENTRO":[13793,12105,8856,10854,10270,11692]};
+const PART_PT={"PRINCIPAL":91790,"CENTRO":89737,"UNICENTRO":67570,"AVENIDA":51289,"DOMICILIOS":49783};
+const TOP12=[{"n":"P. Asado Cuarto","v":641.6,"k":"VACA","mg":35.3},{"n":"P. Asado Entero","v":401.4,"k":"VACA","mg":37.5},{"n":"P. Broaster Cuarto","v":162.1,"k":"VACA","mg":36.2},{"n":"Bandeja P. Asado","v":128.0,"k":"VACA","mg":36.9},{"n":"Consomé c/Pollo","v":73.7,"k":"ESTRELLA","mg":46.0},{"n":"Limonada","v":71.7,"k":"VACA","mg":56.0},{"n":"P. Broaster Entero","v":65.1,"k":"ESTRELLA","mg":39.0},{"n":"Consomé Menudencia","v":61.1,"k":"VACA","mg":40.0},{"n":"Crispetas","v":58.4,"k":"ESTRELLA","mg":48.0},{"n":"Gaseosa 350ml","v":48.6,"k":"ESTRELLA","mg":67.0},{"n":"Jugo Nat. Agua","v":38.9,"k":"VACA","mg":60.0},{"n":"Alitas BBQ","v":36.4,"k":"VACA","mg":37.0}];
+const BEBS=[{"n":"LIMONADA","mg":56.0,"rot":2676.8,"ctr":71.74,"kas":"VACA","u":16424},{"n":"GASEOSA 350ML","mg":67.0,"rot":1625.4,"ctr":48.61,"kas":"ESTRELLA","u":10077},{"n":"JUGO NAT. AGUA","mg":60.0,"rot":1351.9,"ctr":38.87,"kas":"VACA","u":8308},{"n":"FRIOPACK","mg":60.0,"rot":1165.2,"ctr":30.34,"kas":"ESTRELLA","u":7022},{"n":"JUGO NAT. LECHE","mg":48.5,"rot":922.6,"ctr":25.85,"kas":"VACA","u":5672},{"n":"JUGO MANGO","mg":61.0,"rot":669.2,"ctr":19.65,"kas":"ESTRELLA","u":4129},{"n":"JUGO MORA","mg":64.0,"rot":585.2,"ctr":18.09,"kas":"PUZZLE","u":3624},{"n":"LITRAZO 1.5L","mg":49.0,"rot":694.1,"ctr":15.64,"kas":"VACA","u":4313},{"n":"AGUAS","mg":61.0,"rot":596.3,"ctr":14.57,"kas":"ESTRELLA","u":3619},{"n":"GRANIZADO","mg":56.6,"rot":290.7,"ctr":11.93,"kas":"PERRO","u":1785},{"n":"FUZE TEA","mg":60.0,"rot":232.0,"ctr":5.82,"kas":"PUZZLE","u":1407},{"n":"GASEOSA 250ML","mg":72.0,"rot":227.6,"ctr":5.48,"kas":"PUZZLE","u":1410},{"n":"SODA","mg":65.0,"rot":202.8,"ctr":5.12,"kas":"PUZZLE","u":1231},{"n":"MEGALITRO","mg":52.0,"rot":69.0,"ctr":3.51,"kas":"PERRO","u":425},{"n":"JUGO DEL VALLE","mg":59.0,"rot":160.5,"ctr":3.44,"kas":"PERRO","u":987},{"n":"CERVEZA","mg":55.5,"rot":90.0,"ctr":2.57,"kas":"PERRO","u":551}];
+const DOM_BEB=[{"n":"Limonada","total":16424,"dom":676,"pct":4.1},{"n":"Gas. 350ml","total":10077,"dom":0,"pct":0.0},{"n":"J.Nat.Agua","total":8308,"dom":354,"pct":4.3},{"n":"Friopack","total":7022,"dom":557,"pct":7.9},{"n":"J.Nat.Leche","total":5672,"dom":387,"pct":6.8},{"n":"J.Mango","total":4410,"dom":231,"pct":5.2},{"n":"J.Mora","total":3902,"dom":185,"pct":4.7},{"n":"Aguas","total":3619,"dom":111,"pct":3.1},{"n":"Granizado","total":1785,"dom":13,"pct":0.7}];
+const COMBO_DATA=[{"prod":"Hmb. Apanada","solo":50,"combo":164},{"prod":"Hmb. Crispi","solo":53,"combo":198},{"prod":"Sándwich","solo":110,"combo":252},{"prod":"Burrito","solo":107,"combo":191}];
+const ELIM_DATA=[{"prod":"Pollo Mexicano Entero","rot":32,"mg":33,"px":74900,"tier":"INMEDIATA","cat":"Platos"},{"prod":"Combo Grillé para Dos","rot":40,"mg":35,"px":39900,"tier":"INMEDIATA","cat":"Combos"},{"prod":"Pollo BBQ Entero","rot":61,"mg":34,"px":70600,"tier":"INMEDIATA","cat":"Platos"},{"prod":"Ensalada César","rot":74,"mg":32,"px":25500,"tier":"INMEDIATA","cat":"Platos"},{"prod":"Alitas Picantes","rot":82,"mg":35,"px":37300,"tier":"INMEDIATA","cat":"Platos"},{"prod":"Sopa de Ajiaco","rot":8,"mg":43,"px":9900,"tier":"RECOMENDADA","cat":"Complementos"},{"prod":"Sopa de Sancocho","rot":11,"mg":42,"px":9900,"tier":"RECOMENDADA","cat":"Complementos"},{"prod":"Cascos Papa + Ají","rot":8,"mg":42,"px":9800,"tier":"RECOMENDADA","cat":"Complementos"},{"prod":"Adicional Salsa César","rot":1,"mg":45,"px":3400,"tier":"RECOMENDADA","cat":"Adiciones"},{"prod":"Adicional Sobre Miel","rot":15,"mg":45,"px":800,"tier":"RECOMENDADA","cat":"Adiciones"},{"prod":"Alm. Pollo Broaster","rot":111,"mg":35,"px":27800,"tier":"EVALUAR","cat":"Platos"},{"prod":"Nachos Mexicanos","rot":119,"mg":38,"px":29800,"tier":"EVALUAR","cat":"Platos"},{"prod":"Bandeja Pollo Mexicano","rot":120,"mg":35,"px":30900,"tier":"EVALUAR","cat":"Platos"},{"prod":"Bandeja Pollo BBQ","rot":136,"mg":36,"px":29400,"tier":"EVALUAR","cat":"Platos"},{"prod":"Alitas Miel Mostaza","rot":160,"mg":35,"px":36900,"tier":"EVALUAR","cat":"Platos"},{"prod":"Granizado","rot":291,"mg":57,"px":11800,"tier":"EVALUAR","cat":"Bebidas"},{"prod":"Cerveza","rot":90,"mg":55,"px":8400,"tier":"EVALUAR","cat":"Bebidas"},{"prod":"Jugo del Valle","rot":161,"mg":59,"px":5900,"tier":"EVALUAR","cat":"Bebidas"}];
+const BEH_DATA=[{title:"Precio de encanto",body:"El 56% de la carta termina en .800 o .900 — correcto. Pero 21 productos tienen terminaciones en .400 o .600 que deben corregirse al pasar al nuevo menú. El único precio redondo es el Agrandado de Papa ($1.000) — revisar si es intencional.",prio:"Alta"},{title:"Efecto ancla",body:"P. Mexicano Entero ($74.900) y BBQ Entero ($70.600) actúan como anclas que hacen al Cuarto ($16.900) verse muy accesible. Al eliminarlos del nuevo menú, hay que diseñar nuevas anclas con los pollos enteros ($63.900) en posición visual prominente.",prio:"Alta"},{title:"Bundling",body:"Los datos confirman que el combo multiplica la rotación entre 1,8x y 3,7x sin reducir el margen ponderado. El cliente percibe mayor valor, no mayor gasto. Todos los productos con versión combo deben presentarse exclusivamente así.",prio:"Alta"},{title:"Precio de referencia",body:"La Limonada a $7.800 junto al Pollo Asado Cuarto a $16.900 se percibe como 'barata'. Posicionar bebidas inmediatamente después del precio del plato con framing '+Limonada $7.800' aprovecha ese contraste de forma natural.",prio:"Alta"},{title:"Efecto proximidad",body:"El Consomé con Pollo Desmechado (Estrella, 46% margen) debe aparecer contiguo a la sección de Pollo Asado, no en una sección separada. La cercanía visual sugiere la compra complementaria de forma natural.",prio:"Alta"},{title:"Paradoja de la elección",body:"86 productos generan parálisis decisional — el cliente elige lo conocido. Reducir a 30 productos no es solo una decisión financiera: es behavioral pricing que acelera la decisión del cliente hacia los productos rentables.",prio:"Alta"},{title:"Versioning de gaseosas",body:"La Gaseosa 250ml tiene 72% de margen pero vende 7x menos que la 350ml. El cliente percibe la 250ml como 'chica'. El versioning solo funciona cuando el tamaño medio se presenta como la opción inteligente.",prio:"Media"},{title:"Efecto señuelo",body:"El Jugo de Mora ($7.800, 64% margen) puede funcionar como señuelo de la Limonada: mismo precio, sabor menos común, hace que la Limonada parezca la opción segura. Mostrar ambas juntas favorece la opción conocida.",prio:"Media"},{title:"Escasez percibida",body:"El Ajiaco y el Sancocho disponibles 'solo los fines de semana' generan valor percibido y urgencia de compra. La escasez puede mover estos Puzzles hacia Estrellas sin modificar precio ni producto.",prio:"Media"},{title:"Diseño narrativo del precio",body:"'Adicional papa $1.000' activa la misma compra que '¿Le agrandamos la papa? +$900', pero la segunda vende más. El framing de beneficio mínimo aumenta la tasa de aceptación del upsell en caja y en domicilios.",prio:"Media"}];
+
+const tip=document.getElementById('tooltip');
+function showTip(e,html){tip.innerHTML=html;tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px'}
+document.addEventListener('mousemove',e=>{if(tip.style.display!='none'){tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px'}});
+function hideTip(){tip.style.display='none'}
+
+let kasChart=null;
+
+function show(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(id==='kasavana'&&!kasChart) setTimeout(()=>renderKas('TODAS'),50);
+}
+
+function filterKas(cat,btn){
+  document.querySelectorAll('#sec-kasavana .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderKas(cat);
+}
+
+function renderKas(cat){
+  const data=cat==='TODAS'?SCATTER_DATA:SCATTER_DATA.filter(d=>d.cat===cat);
+  const sets={ESTRELLA:[],VACA:[],PUZZLE:[],PERRO:[]};
+  data.forEach(d=>{
+    sets[d.kas].push({x:Math.min(d.rot,3500),y:d.mg,r:Math.max(4,Math.min(22,Math.sqrt(d.ctr)*3.5)),raw:d});
+  });
+  if(kasChart){kasChart.destroy();kasChart=null;}
+  const ctx=document.getElementById('c-kas');
+  kasChart=new Chart(ctx,{
+    type:'bubble',
+    data:{datasets:['ESTRELLA','VACA','PUZZLE','PERRO'].map(k=>({label:k,data:sets[k],backgroundColor:KF[k],borderColor:KC[k],borderWidth:1.3}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{
+        x:{min:-50,max:3600,grid:{color:GL},ticks:{font:{size:10},color:TC,callback:v=>v>=3500?'3500+':v},title:{display:true,text:'Rotación mensual ponderada (unidades)',font:{size:11},color:TC}},
+        y:{min:28,max:75,grid:{color:GL},ticks:{font:{size:10},color:TC,callback:v=>v+'%'},title:{display:true,text:'Margen bruto %',font:{size:11},color:TC}}
+      }
+    },
+    plugins:[{id:'q',afterDraw(ch){
+      const {ctx:c,chartArea:{left,right,top,bottom},scales:{x,y}}=ch;
+      const mx=x.getPixelForValue(500),my=y.getPixelForValue(42);
+      c.save();
+      [[mx,top,right-mx,my-top,'rgba(29,107,80,0.05)'],[left,top,mx-left,my-top,'rgba(186,117,23,0.05)'],[mx,my,right-mx,bottom-my,'rgba(162,45,45,0.05)'],[left,my,mx-left,bottom-my,'rgba(85,85,85,0.04)']].forEach(([lx,ty,w,h,fc])=>{c.fillStyle=fc;c.fillRect(lx,ty,w,h)});
+      c.setLineDash([5,4]);c.strokeStyle='rgba(0,0,0,0.15)';c.lineWidth=1;
+      c.beginPath();c.moveTo(mx,top);c.lineTo(mx,bottom);c.stroke();
+      c.beginPath();c.moveTo(left,my);c.lineTo(right,my);c.stroke();
+      c.setLineDash([]);c.font='bold 11px -apple-system,Arial';
+      [['ESTRELLA',right-8,top+14,KC.ESTRELLA,'right'],['PUZZLE',left+8,top+14,KC.PUZZLE,'left'],['VACA',right-8,bottom-8,KC.VACA,'right'],['PERRO',left+8,bottom-8,KC.PERRO,'left']].forEach(([lb,lx2,ty2,col,al])=>{c.fillStyle=col+'99';c.textAlign=al;c.fillText(lb,lx2,ty2)});
+      c.font='9px -apple-system,Arial';
+      [['alta rotación · alto margen',right-8,top+26,KC.ESTRELLA,'right'],['baja rotación · alto margen',left+8,top+26,KC.PUZZLE,'left'],['alta rotación · bajo margen',right-8,bottom-20,KC.VACA,'right'],['baja rotación · bajo margen',left+8,bottom-20,KC.PERRO,'left']].forEach(([lb,lx3,ty3,col,al])=>{c.fillStyle=col+'66';c.textAlign=al;c.fillText(lb,lx3,ty3)});
+      c.restore();
+    }}]
+  });
+  ctx.onmousemove=e=>{
+    const rect=ctx.getBoundingClientRect();
+    const mx2=e.clientX-rect.left,my2=e.clientY-rect.top;
+    let found=null,minD=Infinity;
+    kasChart.data.datasets.forEach(ds=>{ds.data.forEach(pt=>{const px2=kasChart.scales.x.getPixelForValue(pt.x),py=kasChart.scales.y.getPixelForValue(pt.y),d=Math.sqrt((mx2-px2)**2+(my2-py)**2);if(d<pt.r+10&&d<minD){minD=d;found=pt;}})});
+    if(found){
+      const r=found.raw;
+      showTip(e,`<strong style="color:${KC[r.kas]}">${r.n}</strong>${r.kas}<br>Margen: ${r.mg}%<br>Rotación: ${r.rot.toFixed(0)} u/mes<br>Contribución: $${r.ctr.toFixed(1)}M<br>Precio: $${(r.px||0).toLocaleString('es-CO')}`);
+    } else hideTip();
+  };
+  ctx.onmouseleave=hideTip;
+}
+
+function filterElim(tier,btn){
+  document.querySelectorAll('#sec-eliminar .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const data=tier==='TODAS'?ELIM_DATA:ELIM_DATA.filter(d=>d.tier===tier);
+  const tLbl={INMEDIATA:'Inmediata',RECOMENDADA:'Recomendada',EVALUAR:'Evaluar'};
+  document.getElementById('elim-tbody').innerHTML=data.map(d=>`<tr><td style="font-weight:500;color:var(--text)">${d.prod}</td><td>${d.cat}</td><td>$${d.px.toLocaleString('es-CO')}</td><td>${d.mg}%</td><td>${d.rot} u/mes</td><td><span class="tier-badge tier-${d.tier[0]}">${tLbl[d.tier]}</span></td></tr>`).join('');
+}
+
+function filterBeh(prio,btn){
+  document.querySelectorAll('#sec-behavioral .filter-row .fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const data=prio==='TODAS'?BEH_DATA:BEH_DATA.filter(d=>d.prio===prio);
+  document.getElementById('beh-grid').innerHTML=data.map(d=>`<div class="beh-card prio-${d.prio[0]}"><div class="beh-title">${d.title}<span class="prio-badge pb-${d.prio[0]}">${d.prio}</span></div><div class="beh-body">${d.body}</div></div>`).join('');
+}
+
+window.addEventListener('load',()=>{
+  new Chart(document.getElementById('c-kas-sum'),{type:'bar',data:{labels:['Estrella','Vaca','Puzzle','Perro'],datasets:[{label:'Productos',data:[24,21,21,20],backgroundColor:['rgba(29,107,80,.3)','rgba(162,45,45,.3)','rgba(186,117,23,.3)','rgba(85,85,85,.2)'],borderColor:['#1D6B50','#A32D2D','#BA7517','#555'],borderWidth:1,borderRadius:3},{label:'% Margen',data:[21,71,4.2,3.8],backgroundColor:['#1D6B50','#A32D2D','#BA7517','#888'],borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8,color:TC}},tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===0?ctx.raw+' productos':ctx.raw+'% del margen'}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10}}},y:{grid:{color:GL},ticks:{color:TC,font:{size:10}},max:80}}}});
+
+  new Chart(document.getElementById('c-top5'),{type:'bar',data:{labels:TOP12.slice(0,5).map(d=>d.n),datasets:[{data:TOP12.slice(0,5).map(d=>d.v),backgroundColor:['#A32D2D','#A32D2D','#A32D2D','#A32D2D','#1D6B50'],borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.raw.toFixed(0)+'M — '+TOP12[ctx.dataIndex].mg+'% margen'}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10},callback:v=>'$'+v+'M'}},y:{grid:{color:GL},ticks:{color:TC,font:{size:9}}}}}});
+
+  new Chart(document.getElementById('c-tend'),{type:'bar',data:{labels:['Dic 25','Ene 26','Feb 26','Mar 26','Abr 26','May 26'],datasets:[{data:TEND_TOTAL,backgroundColor:['#E05B1A','#5B8DB8','#7FB5A0','#7FB5A0','#7FB5A0','#7FB5A0'],borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw.toLocaleString('es-CO')+' unidades'}}},scales:{x:{grid:{color:GL},ticks:{color:TC}},y:{grid:{color:GL},ticks:{color:TC,callback:v=>(v/1000).toFixed(0)+'K'}}}}});
+
+  new Chart(document.getElementById('c-part'),{type:'bar',data:{labels:Object.keys(PART_PT),datasets:[{data:Object.values(PART_PT),backgroundColor:Object.keys(PART_PT).map(k=>PT_C[k]),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const t=Object.values(PART_PT).reduce((a,b)=>a+b,0);return ctx.raw.toLocaleString('es-CO')+' u ('+((ctx.raw/t*100).toFixed(1))+'%)'}}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10},callback:v=>(v/1000).toFixed(0)+'K'}},y:{grid:{color:GL},ticks:{color:TC,font:{size:10}}}}}});
+
+  new Chart(document.getElementById('c-tend-pts'),{type:'line',data:{labels:['Dic 25','Ene 26','Feb 26','Mar 26','Abr 26','May 26'],datasets:Object.entries(TEND_PTS).map(([k,v])=>({label:k,data:v,borderColor:PT_C[k],backgroundColor:'transparent',tension:.35,pointRadius:3,pointBackgroundColor:PT_C[k],borderWidth:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:TC,font:{size:10},boxWidth:10,padding:8}}},scales:{x:{grid:{color:GL},ticks:{color:TC}},y:{grid:{color:GL},ticks:{color:TC,callback:v=>(v/1000).toFixed(0)+'K'}}}}});
+
+  new Chart(document.getElementById('c-cats'),{type:'bar',data:{labels:['Platos Principales','Complementos','Bebidas','Combos','Adiciones'],datasets:[{label:'% del ingreso',data:[79.4,8.9,8.9,1.8,1.0],backgroundColor:'rgba(224,91,26,0.5)',borderColor:'#E05B1A',borderWidth:1,borderRadius:3},{label:'% del margen',data:[74.4,9.6,13.1,1.7,1.1],backgroundColor:'#174A7C',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:TC,font:{size:10},boxWidth:10,padding:8}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10}}},y:{grid:{color:GL},ticks:{color:TC,callback:v=>v+'%'},max:90}}}});
+
+  new Chart(document.getElementById('c-top12'),{type:'bar',data:{labels:TOP12.map(d=>d.n),datasets:[{data:TOP12.map(d=>d.v),backgroundColor:TOP12.map(d=>d.k==='ESTRELLA'?'#1D6B50':'#A32D2D'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+TOP12[ctx.dataIndex].v.toFixed(0)+'M — '+TOP12[ctx.dataIndex].mg+'% margen'}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10},callback:v=>'$'+v+'M'}},y:{grid:{color:GL},ticks:{color:TC,font:{size:9}}}}}});
+
+  new Chart(document.getElementById('c-eff'),{type:'bar',data:{labels:['Bebidas','Adiciones','Complementos','Combos','Platos Principales'],datasets:[{data:[58.5,45.5,42.7,37.8,37.2],backgroundColor:['#1D6B50','#174A7C','#174A7C','#BA7517','#A32D2D'],borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw.toFixed(1)+'% de margen / ingreso de la categoría'}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:10},callback:v=>v+'%'},min:30,max:65},y:{grid:{color:GL},ticks:{color:TC,font:{size:10}}}}}});
+
+  const bebChart=new Chart(document.getElementById('c-beb-kas'),{type:'bubble',data:{datasets:['ESTRELLA','VACA','PUZZLE','PERRO'].map(k=>({label:k,data:BEBS.filter(d=>d.kas===k).map(d=>({x:Math.min(d.rot,2800),y:d.mg,r:Math.max(5,Math.min(22,Math.sqrt(d.ctr)*4.5)),raw:d})),backgroundColor:KF[k],borderColor:KC[k],borderWidth:1.3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{min:-30,max:2900,grid:{color:GL},ticks:{color:TC,font:{size:9}},title:{display:true,text:'Rotación (u/mes)',font:{size:10},color:TC}},y:{min:44,max:76,grid:{color:GL},ticks:{color:TC,font:{size:9},callback:v=>v+'%'},title:{display:true,text:'Margen %',font:{size:10},color:TC}}}},plugins:[{id:'bq',afterDraw(ch){const {ctx:c,chartArea:{left,right,top,bottom},scales:{x,y}}=ch;const mx=x.getPixelForValue(591),my=y.getPixelForValue(60);c.save();[[mx,top,right-mx,my-top,'rgba(29,107,80,0.05)'],[left,top,mx-left,my-top,'rgba(186,117,23,0.05)'],[mx,my,right-mx,bottom-my,'rgba(162,45,45,0.05)'],[left,my,mx-left,bottom-my,'rgba(85,85,85,0.04)']].forEach(([lx,ty,w,h,fc])=>{c.fillStyle=fc;c.fillRect(lx,ty,w,h)});c.setLineDash([4,4]);c.strokeStyle='rgba(0,0,0,0.15)';c.lineWidth=1;c.beginPath();c.moveTo(mx,top);c.lineTo(mx,bottom);c.stroke();c.beginPath();c.moveTo(left,my);c.lineTo(right,my);c.stroke();c.setLineDash([]);c.font='bold 10px -apple-system,Arial';[['ESTRELLA',right-6,top+13,KC.ESTRELLA,'right'],['PUZZLE',left+6,top+13,KC.PUZZLE,'left'],['VACA',right-6,bottom-6,KC.VACA,'right'],['PERRO',left+6,bottom-6,KC.PERRO,'left']].forEach(([lb,lx2,ty2,col,al])=>{c.fillStyle=col+'99';c.textAlign=al;c.fillText(lb,lx2,ty2)});c.restore();}}]});
+  const bk=document.getElementById('c-beb-kas');
+  bk.onmousemove=e=>{const rect=bk.getBoundingClientRect();const mx2=e.clientX-rect.left,my2=e.clientY-rect.top;let found=null,minD=Infinity;bebChart.data.datasets.forEach(ds=>{ds.data.forEach(pt=>{const px2=bebChart.scales.x.getPixelForValue(pt.x),py=bebChart.scales.y.getPixelForValue(pt.y),d=Math.sqrt((mx2-px2)**2+(my2-py)**2);if(d<pt.r+10&&d<minD){minD=d;found=pt;}})});if(found){const r=found.raw;showTip(e,`<strong style="color:${KC[r.kas]}">${r.n}</strong>${r.kas}<br>Margen: ${r.mg}%<br>Rotación: ${r.rot.toFixed(0)} u/mes<br>Unidades totales: ${r.u.toLocaleString('es-CO')}`);} else hideTip();};
+  bk.onmouseleave=hideTip;
+
+  new Chart(document.getElementById('c-dom-beb'),{type:'bar',data:{labels:DOM_BEB.map(d=>d.n),datasets:[{label:'Total unidades',data:DOM_BEB.map(d=>d.total),backgroundColor:'rgba(150,150,150,0.35)',borderRadius:3},{label:'Por domicilio',data:DOM_BEB.map(d=>d.dom),backgroundColor:'#7B5EA7',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:TC,font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===0?ctx.raw.toLocaleString('es-CO')+' total':ctx.raw.toLocaleString('es-CO')+' domicilios ('+DOM_BEB[ctx.dataIndex].pct+'%)'}}},scales:{x:{grid:{color:GL},ticks:{color:TC,font:{size:9},maxRotation:30}},y:{grid:{color:GL},ticks:{color:TC,font:{size:10}}}}}});
+
+  new Chart(document.getElementById('c-combo'),{type:'bar',data:{labels:COMBO_DATA.map(d=>d.prod),datasets:[{label:'Solo (Puzzle)',data:COMBO_DATA.map(d=>d.solo),backgroundColor:'rgba(162,45,45,0.4)',borderColor:'#A32D2D',borderWidth:1,borderRadius:3},{label:'Combo (Estrella)',data:COMBO_DATA.map(d=>d.combo),backgroundColor:'#1D6B50',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:TC,font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>{const d=COMBO_DATA[ctx.dataIndex];return ctx.datasetIndex===0?ctx.raw+' u/mes (Puzzle)':ctx.raw+' u/mes (Estrella — '+(d.combo/d.solo).toFixed(1)+'x)'}}}},scales:{x:{grid:{color:GL},ticks:{color:TC}},y:{grid:{color:GL},ticks:{color:TC},title:{display:true,text:'Rotación mensual ponderada',font:{size:10},color:TC}}}}});
+
+  filterElim('TODAS',document.querySelector('#sec-eliminar .fbtn.on'));
+  filterBeh('TODAS',document.querySelector('#sec-behavioral .fbtn.on'));
+});
+</script>
+</body>
+</html>
